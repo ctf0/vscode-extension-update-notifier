@@ -1,0 +1,34 @@
+{
+    "name": "extension-update-notifier",
+    "displayName": "Extension Update Notifier",
+    "description": "get notified when an extension is updated",
+    "version": "0.0.1",
+    "publisher": "ctf0",
+    "author": "ctf0",
+    "repository": "https://github.com/ctf0/vscode-extension-update-notifier",
+    "engines": {
+        "vscode": "^1.110.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./out/main",
+    "contributes": {},
+    "scripts": {
+        "vscode:prepublish": "npm run esbuild-base -- --pure:console.log --minify",
+        "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+        "esbuild": "npm run esbuild-base -- --sourcemap",
+        "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+        "watch": "npm run esbuild"
+    },
+    "devDependencies": {
+        "@types/node": "^26.1.1",
+        "@types/vscode": "^1.110.0",
+        "esbuild": "^0.28.1",
+        "typescript": "^7.0.2"
+    },
+    "dependencies": {}
+}
