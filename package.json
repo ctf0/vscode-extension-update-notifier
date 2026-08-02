@@ -2,7 +2,7 @@
     "name": "extension-update-notifier",
     "displayName": "Extension Update Notifier",
     "description": "get notified when an extension is updated",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/vscode-extension-update-notifier",

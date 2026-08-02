@@ -1,8 +1,13 @@
 import * as vscode from 'vscode'
 
 const CACHE_KEY = 'extensionVersions'
+const KNOWN_KEY = 'knownExtensions'
 
 type VersionSnapshot = Record<string, string>
+
+function isDebugMode(context: vscode.ExtensionContext) {
+    return context.extensionMode !== vscode.ExtensionMode.Production
+}
 
 interface ExtensionChange {
     name        : string
@@ -23,7 +28,16 @@ function extensionName(ext: vscode.Extension<unknown>): string {
  * any extensions that were updated or installed in the meantime.
  */
 async function checkForChanges(context: vscode.ExtensionContext): Promise<void> {
+    // Working on the extension itself (i.e. inside the dev host launched
+    // from F5) shouldn't trigger popups, and the dev host's extension set
+    // should not overwrite the baseline cached by normal usage.
+    if (isDebugMode(context)) {
+        return
+    }
+
     const previous = context.globalState.get<VersionSnapshot>(CACHE_KEY)
+    const knownBefore = new Set(context.globalState.get<string[]>(KNOWN_KEY) ?? [])
+    const known = new Set(knownBefore)
     const current: VersionSnapshot = {}
     const updated: ExtensionChange[] = []
     const installed: ExtensionChange[] = []
@@ -39,6 +53,7 @@ async function checkForChanges(context: vscode.ExtensionContext): Promise<void> 
             continue
         }
 
+        known.add(ext.id)
         current[ext.id] = version
 
         // First run: nothing to compare against yet, just persist a baseline
@@ -50,7 +65,11 @@ async function checkForChanges(context: vscode.ExtensionContext): Promise<void> 
         const oldVersion = previous[ext.id]
 
         if (oldVersion === undefined) {
-            installed.push({name, version})
+            // Reappearing an extension that was already seen before means it
+            // was disabled and enabled again, which is not a fresh install.
+            if (!knownBefore.has(ext.id)) {
+                installed.push({name, version})
+            }
         } else if (oldVersion !== version) {
             updated.push({name, oldVersion, version})
         }
@@ -61,6 +80,7 @@ async function checkForChanges(context: vscode.ExtensionContext): Promise<void> 
     }
 
     await context.globalState.update(CACHE_KEY, current)
+    await context.globalState.update(KNOWN_KEY, [...known])
 }
 
 function notify(updated: ExtensionChange[], installed: ExtensionChange[]): void {
@@ -72,10 +92,10 @@ function notify(updated: ExtensionChange[], installed: ExtensionChange[]): void 
 
     if (total === 1) {
         const change = updated[0] ?? installed[0]
+        const msg = `${change.name} (v${change.version})`
+
         vscode.window.showInformationMessage(
-            change.oldVersion === undefined
-                ? `Extension Installed: ${change.name} (v${change.version})`
-                : `Extension Updated: ${change.name} is now at v${change.version}`,
+            change.oldVersion === undefined ? `${msg} installed` : `${msg} updated`,
         )
 
         return
